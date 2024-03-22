@@ -11,6 +11,8 @@ from pathlib import Path
 from string import Template
 
 class JenkinsClean:
+    DEFAULT_FORMAT_STRING = r"Usage of $path: $used GiB / $total GiB (${percentage}%), $free GiB free"
+
     def __init__(
             self,
             path: Path | None = None,
@@ -34,13 +36,12 @@ class JenkinsClean:
         self.preserve_pattern = None
         self.clean_pattern = None
         self.__process_path()
-        self.__validate_args()
 
     def path_usage(self, format_str: str | None = None) -> str:
         """
         Available format tokens are $path, $total, $used, $free, and $percentage.  Space is in GiB.
         """
-        format_str = format_str or r"Usage of $path: $used GiB / $total GiB (${percentage}%), $free GiB free"
+        format_str = format_str or self.DEFAULT_FORMAT_STRING
         mapping = {}
         usage = shutil.disk_usage(self.path)
         mapping['path'] = self.path
@@ -51,6 +52,7 @@ class JenkinsClean:
         return Template(format_str).safe_substitute(mapping)
 
     def clean(self) -> None:
+        self.__validate_args()
         to_clean = []
         to_preserve = []
         quota_number = self.max_workspace or None
@@ -217,9 +219,18 @@ def parse_args():
         action='store_true',
         help="dry run",
     )
+    parser.add_argument(
+        '-u',
+        '--disk-usage',
+        metavar='FORMAT',
+        action='store',
+        nargs='?',
+        const=JenkinsClean.DEFAULT_FORMAT_STRING,
+        help="Print a formatted string of disk usage and exit.  Available format tokens are $path, $total, $used, $free, and $percentage.  Space is in GiB.",
+    )
     return parser.parse_args()
 
-def main():
+def main() -> None:
     args = parse_args()
     path = Path(args.path) if args.path else None
     jc = JenkinsClean(
@@ -232,13 +243,14 @@ def main():
         dry_run=args.dry_run,
         force=args.force,
     )
-    if not args.dry_run:
-        print(jc.path_usage())
+
+    disk_usage: str | None = args.disk_usage
+
+    if disk_usage:
+        print(jc.path_usage(disk_usage))
+        return
 
     jc.clean()
-
-    if not args.dry_run:
-        print(jc.path_usage())
 
 if __name__ == '__main__':
     try:
@@ -247,3 +259,4 @@ if __name__ == '__main__':
         print("Abort.", file=sys.stderr)
     except JenkinsCleanError as error:
         print("error:", error, file=sys.stderr)
+        sys.exit(1)
