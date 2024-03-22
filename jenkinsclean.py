@@ -90,11 +90,7 @@ class JenkinsClean:
                     break
             to_preserve.append(ws)
 
-        for ws in dirs_sorted:
-            if ws in to_preserve:
-                continue
-            if ws not in to_clean:
-                to_clean.append(ws)
+        to_clean = [x for x in dirs_sorted if x not in to_preserve]
 
         if to_clean:
             print("Workspaces to remove:")
