@@ -167,6 +167,12 @@ def parse_args():
         description="Clean up Jenkins workspaces",
     )
     parser.add_argument(
+        '-V',
+        '--version',
+        action='version',
+        version=__version__,
+    )
+    parser.add_argument(
         'path',
         nargs='?',
         help="path to parent of workspace directories (default: current directory)",
@@ -210,12 +216,6 @@ def parse_args():
         '--dry-run',
         action='store_true',
         help="dry run",
-    )
-    parser.add_argument(
-        '-V',
-        '--version',
-        action='version',
-        version=__version__,
     )
     return parser.parse_args()
 
