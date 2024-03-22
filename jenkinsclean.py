@@ -67,6 +67,8 @@ class JenkinsClean:
             for ws in dirs:
                 if self.preserve_pattern.match(ws):
                     to_preserve.append(ws)
+                    if ws in to_clean:
+                        to_clean.remove(ws)
                     if quota_number is not None:
                         quota_number -= 1
                     if quota_size is not None:
