@@ -5,6 +5,7 @@ __version__ = "0.1.0"
 import os
 import re
 import sys
+import stat
 import shutil
 import argparse
 from pathlib import Path
@@ -122,7 +123,15 @@ class JenkinsClean:
         if self.dry_run or not self.force:
             return
         print("Removing", path)
-        shutil.rmtree(path, ignore_errors=True)
+        shutil.rmtree(path, onexc=self.__onexc)
+
+    @staticmethod
+    def __onexc(func, path, excinfo):
+        if not os.access(path, os.W_OK):
+            os.chmod(path, stat.S_IWUSR)
+            func(path)
+        else:
+            print(f"warning: failed to remove {path}: {excinfo}", file=sys.stderr)
 
     def __validate_args(self) -> None:
         if not self.dry_run and not self.force:
