@@ -60,6 +60,8 @@ class JenkinsClean:
         if self.clean_pattern:
             to_clean += [x for x in dirs if self.clean_pattern.match(x)]
         if self.preserve_pattern:
+            if quota_size is not None:
+                print("Calculating always preserved workspace size")
             for ws in dirs:
                 if self.preserve_pattern.match(ws):
                     to_preserve.append(ws)
@@ -67,16 +69,20 @@ class JenkinsClean:
                         quota_number -= 1
                     if quota_size is not None:
                         quota_size -= self.size(root / ws)
+        if quota_size is not None:
+            print("Calculating workspace size")
         for ws in dirs_sorted:
             if ws in to_clean or ws in to_preserve:
                 continue
             if quota_number is not None:
                 quota_number -= 1
                 if quota_number < 0:
+                    print("Workspace number limit reached")
                     break
             if quota_size is not None:
                 quota_size -= self.size(root / ws)
                 if quota_size < 0:
+                    print("Workspace size limit reached")
                     break
             to_preserve.append(ws)
 
