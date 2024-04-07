@@ -61,12 +61,12 @@ class JenkinsClean:
         root, dirs, _ = next(self.path.walk())
         dirs_sorted = sorted(dirs, key=lambda x: os.path.getmtime(root / x), reverse=True)
         if self.clean_pattern:
-            to_clean += [x for x in dirs if self.clean_pattern.match(x)]
+            to_clean += [x for x in dirs if self.clean_pattern.search(x)]
         if self.preserve_pattern:
             if quota_size is not None:
                 print("Calculating always preserved workspace size")
             for ws in dirs:
-                if self.preserve_pattern.match(ws):
+                if self.preserve_pattern.search(ws):
                     to_preserve.append(ws)
                     if ws in to_clean:
                         to_clean.remove(ws)
