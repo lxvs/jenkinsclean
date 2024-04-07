@@ -54,7 +54,9 @@ class JenkinsClean:
         to_clean = []
         to_preserve = []
         quota_number = self.max_workspace or None
-        quota_size = self.max_size or None
+        quota_size = None
+        if self.max_size and self.max_size < shutil.disk_usage(self.path).used:
+            quota_size = self.max_size
         root, dirs, _ = next(self.path.walk())
         dirs_sorted = sorted(dirs, key=lambda x: os.path.getmtime(root / x), reverse=True)
         if self.clean_pattern:
