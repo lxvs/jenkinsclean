@@ -1,10 +1,29 @@
 #!/usr/bin/env python
 
 import sys
+import shutil
 import argparse
 from pathlib import Path
+from string import Template
 
 from jenkinsclean import JenkinsClean, JenkinsCleanError, __version__
+
+DEFAULT_FORMAT_STRING = r"Usage of $path: $used GiB / $total GiB (${percentage}%), $free GiB free"
+
+def path_usage(path: Path | None = None, format_str: str | None = None) -> str:
+    """
+    Available format tokens are $path, $total, $used, $free, and $percentage.  Space is in GiB.
+    """
+    path = path or Path.cwd()
+    format_str = format_str or DEFAULT_FORMAT_STRING
+    mapping = {}
+    usage = shutil.disk_usage(path)
+    mapping['path'] = path
+    mapping['total'] = usage.total // 2**30
+    mapping['used'] = usage.used // 2**30
+    mapping['free'] = usage.free // 2**30
+    mapping['percentage'] = 100 * usage.used // usage.total
+    return Template(format_str).safe_substitute(mapping)
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -67,7 +86,7 @@ def parse_args():
         metavar='FORMAT',
         action='store',
         nargs='?',
-        const=JenkinsClean.DEFAULT_FORMAT_STRING,
+        const=DEFAULT_FORMAT_STRING,
         help="Print a formatted string of disk usage and exit.  Available format tokens are $path, $total, $used, $free, and $percentage.  Space is in GiB.",
     )
     return parser.parse_args()
@@ -89,7 +108,7 @@ def main() -> None:
     disk_usage: str | None = args.disk_usage
 
     if disk_usage:
-        print(jc.path_usage(disk_usage))
+        print(path_usage(path, disk_usage))
         return
 
     jc.clean()

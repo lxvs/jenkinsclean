@@ -6,10 +6,8 @@ import sys
 import stat
 import shutil
 from pathlib import Path
-from string import Template
 
 class JenkinsClean:
-    DEFAULT_FORMAT_STRING = r"Usage of $path: $used GiB / $total GiB (${percentage}%), $free GiB free"
 
     def __init__(
             self,
@@ -34,20 +32,6 @@ class JenkinsClean:
         self.preserve_pattern = None
         self.clean_pattern = None
         self.__process_path()
-
-    def path_usage(self, format_str: str | None = None) -> str:
-        """
-        Available format tokens are $path, $total, $used, $free, and $percentage.  Space is in GiB.
-        """
-        format_str = format_str or self.DEFAULT_FORMAT_STRING
-        mapping = {}
-        usage = shutil.disk_usage(self.path)
-        mapping['path'] = self.path
-        mapping['total'] = usage.total // 2**30
-        mapping['used'] = usage.used // 2**30
-        mapping['free'] = usage.free // 2**30
-        mapping['percentage'] = 100 * usage.used // usage.total
-        return Template(format_str).safe_substitute(mapping)
 
     def clean(self) -> None:
         self.__validate_args()
