@@ -47,7 +47,7 @@ class JenkinsClean:
             to_clean += [x for x in dirs if self.clean_pattern.search(x)]
         if self.preserve_pattern:
             if quota_size is not None:
-                print("Calculating always preserved workspace size")
+                print("Calculating always preserved workspace size", flush=True)
             for ws in dirs:
                 if self.preserve_pattern.search(ws):
                     to_preserve.append(ws)
@@ -58,7 +58,7 @@ class JenkinsClean:
                     if quota_size is not None:
                         quota_size -= self.size(root / ws)
         if quota_size is not None:
-            print("Calculating workspace size")
+            print("Calculating workspace size", flush=True)
         for ws in dirs_sorted:
             if ws in to_clean or ws in to_preserve:
                 continue
@@ -105,7 +105,7 @@ class JenkinsClean:
     def rmtree(self, path: str | Path) -> None:
         if self.dry_run or not self.force:
             return
-        print("Removing", path)
+        print("Removing", path, flush=True)
         shutil.rmtree(path, onexc=self.__onexc)
 
     @staticmethod
