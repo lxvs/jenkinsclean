@@ -76,24 +76,19 @@ class JenkinsClean:
 
         to_clean = [x for x in dirs_sorted if x not in to_preserve]
 
-        if to_clean:
-            print("Workspaces to remove:")
-            for ws in to_clean:
-                print(f"  {ws}")
-            print()
-        else:
-            print("No workspace to remove")
-
-        if to_preserve:
-            print("Workspaces to preserve:")
-            for ws in to_preserve:
-                print(f"  {ws}")
-            print()
-        else:
-            print("No workspace to preserve")
+        self.report(to_clean, "clean")
+        self.report(to_preserve, "preserve")
 
         for ws in to_clean:
             self.rmtree(root / ws)
+
+    @staticmethod
+    def report(ws: list, to: str) -> None:
+        sep = '\n  '
+        if ws:
+            print(f"Workspaces to {to}:{sep}", sep.join(ws), '\n', sep='', flush=True)
+        else:
+            print(f"No workspace to {to}", flush=True)
 
     def size(self, path: Path) -> float:
         """Return the size of a directory in byte"""
