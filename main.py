@@ -59,6 +59,16 @@ def parse_args():
         help="max percentage of disk space allowed for preserved workspace",
     )
     parser.add_argument(
+        '--target-gb',
+        type=float,
+        help="Target GiB after cleaning",
+    )
+    parser.add_argument(
+        '--target-percentage',
+        type=float,
+        help="target percentage of disk space after cleaning",
+    )
+    parser.add_argument(
         '-p',
         '--always-preserve-pattern',
         help="regex pattern of directory names to be always preserved",
@@ -99,6 +109,8 @@ def main() -> None:
         max_workspace=args.max_workspace,
         max_gb=args.max_gb,
         max_percentage=args.max_percentage,
+        target_gb=args.target_gb,
+        target_percentage=args.target_percentage,
         always_preserve_pattern=args.always_preserve_pattern,
         always_clean_pattern=args.always_clean_pattern,
         dry_run=args.dry_run,

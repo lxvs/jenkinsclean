@@ -15,6 +15,8 @@ class JenkinsClean:
             max_workspace: int | None = None,
             max_gb: float | None = None,
             max_percentage: float | None = None,
+            target_gb: float | None = None,
+            target_percentage: float | None = None,
             always_preserve_pattern: str | None = None,
             always_clean_pattern: str | None = None,
             dry_run: bool = False,
@@ -24,11 +26,14 @@ class JenkinsClean:
         self.max_workspace = max_workspace
         self.max_gb = max_gb
         self.max_percentage = max_percentage
+        self.target_gb = target_gb
+        self.target_percentage = target_percentage
         self.always_preserve_pattern = always_preserve_pattern
         self.always_clean_pattern = always_clean_pattern
         self.dry_run = dry_run
         self.force = force
         self.max_size = None
+        self.target_size = None
         self.preserve_pattern = None
         self.clean_pattern = None
         self.__process_path()
@@ -40,7 +45,7 @@ class JenkinsClean:
         quota_number = self.max_workspace or None
         quota_size = None
         if self.max_size and self.max_size < shutil.disk_usage(self.path).used:
-            quota_size = self.max_size
+            quota_size = self.target_size
         root, dirs, _ = next(self.path.walk())
         dirs_sorted = sorted(dirs, key=lambda x: os.path.getmtime(root / x), reverse=True)
         if self.clean_pattern:
@@ -124,12 +129,25 @@ class JenkinsClean:
         if self.max_workspace and self.max_workspace < 0:
             raise JenkinsCleanError(f"invalid max_workspace: {self.max_workspace}")
 
+        if self.target_gb and self.target_gb < 0:
+            raise JenkinsCleanError(f"invalid target_gb: {self.target_gb}")
+
+        if self.target_percentage and (self.target_percentage < 0 or self.target_percentage > 100):
+            raise JenkinsCleanError(f"invalid target_percentage: {self.target_percentage}")
+
         if self.max_gb and self.max_percentage:
             self.max_size = min(self.max_gb * 2**30, shutil.disk_usage(self.path).total * self.max_percentage // 100)
         elif self.max_gb:
             self.max_size = self.max_gb * 2**30
         elif self.max_percentage:
             self.max_size = shutil.disk_usage(self.path).total * self.max_percentage // 100
+
+        if self.target_gb and self.target_percentage:
+            self.target_size = min(self.target_gb * 2**30, shutil.disk_usage(self.path).total * self.target_percentage // 100)
+        elif self.target_gb:
+            self.target_size = self.target_gb * 2**30
+        elif self.target_percentage:
+            self.target_size = shutil.disk_usage(self.path).total * self.target_percentage // 100
 
         if self.always_clean_pattern:
             self.clean_pattern = re.compile(self.always_clean_pattern)
