@@ -1,4 +1,4 @@
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 import os
 import re
@@ -51,6 +51,8 @@ class JenkinsClean:
         quota_size = None
         if self.max_size and self.max_size < shutil.disk_usage(self.path).used:
             quota_size = self.target_size or self.max_size
+        self.logger.info("JenkinsClean %s", __version__)
+        self.logger.info("Path: %s", self.path)
         if self.max_gb:
             self.logger.info("Size limit:             %s", self.proper_size(self.max_gb * 2**30))
         if self.target_gb:
@@ -134,7 +136,7 @@ class JenkinsClean:
     def rmtree(self, path: str | Path) -> None:
         if self.dry_run or not self.force:
             return
-        self.logger.info("Removing %s", str(path))
+        self.logger.info("Removing %s", path)
         shutil.rmtree(path, onexc=self.__onexc)
 
     def __onexc(self, func, path, excinfo):
