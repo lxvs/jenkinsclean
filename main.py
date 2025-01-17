@@ -99,6 +99,12 @@ def parse_args():
         const=DEFAULT_FORMAT_STRING,
         help="Print a formatted string of disk usage and exit.  Available format tokens are $path, $total, $used, $free, and $percentage.  Space is in GiB.",
     )
+    parser.add_argument(
+        '-q',
+        '--quiet',
+        action='store_true',
+        help="Only print errors and warnings",
+    )
     return parser.parse_args()
 
 def main() -> None:
@@ -115,6 +121,7 @@ def main() -> None:
         always_clean_pattern=args.always_clean_pattern,
         dry_run=args.dry_run,
         force=args.force,
+        quiet=args.quiet,
     )
 
     disk_usage: str | None = args.disk_usage

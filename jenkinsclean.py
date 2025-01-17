@@ -2,9 +2,9 @@ __version__ = "0.4.0"
 
 import os
 import re
-import sys
 import stat
 import shutil
+import logging
 from pathlib import Path
 
 class JenkinsClean:
@@ -21,6 +21,7 @@ class JenkinsClean:
             always_clean_pattern: str | None = None,
             dry_run: bool = False,
             force: bool = False,
+            quiet: bool = False,
     ) -> None:
         self.path = path
         self.max_workspace = max_workspace
@@ -36,6 +37,10 @@ class JenkinsClean:
         self.target_size = None
         self.preserve_pattern = None
         self.clean_pattern = None
+        logging.basicConfig(format='%(message)s', level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+        if quiet:
+            self.logger.setLevel(logging.WARNING)
         self.__process_path()
 
     def clean(self) -> None:
@@ -45,14 +50,30 @@ class JenkinsClean:
         quota_number = self.max_workspace or None
         quota_size = None
         if self.max_size and self.max_size < shutil.disk_usage(self.path).used:
-            quota_size = self.target_size
+            quota_size = self.target_size or self.max_size
+        if self.max_gb:
+            self.logger.info("Size limit:             %s", self.proper_size(self.max_gb * 2**30))
+        if self.target_gb:
+            self.logger.info("Target size:            %s", self.proper_size(self.target_gb * 2**30))
+        if self.max_percentage:
+            self.logger.info("Percentage limit:       %s%%", self.max_percentage)
+        if self.target_percentage:
+            self.logger.info("Target percentage:      %s%%", self.target_percentage)
+        if self.max_workspace:
+            self.logger.info("Workspace number limit: %s", self.max_workspace)
+        if self.max_size:
+            self.logger.info("Actual size limit:      %s", self.proper_size(self.max_size))
+        if quota_size:
+            self.logger.info("Actual size target:     %s", self.proper_size(quota_size))
         root, dirs, _ = next(self.path.walk())
+        self.logger.info("Sorting")
         dirs_sorted = sorted(dirs, key=lambda x: os.path.getmtime(root / x), reverse=True)
+        self.logger.info("Scanning")
         if self.clean_pattern:
             to_clean += [x for x in dirs if self.clean_pattern.search(x)]
         if self.preserve_pattern:
             if quota_size is not None:
-                print("Calculating always preserved workspace size", flush=True)
+                self.logger.info("Calculating always preserved workspace size")
             for ws in dirs:
                 if self.preserve_pattern.search(ws):
                     to_preserve.append(ws)
@@ -63,19 +84,19 @@ class JenkinsClean:
                     if quota_size is not None:
                         quota_size -= self.size(root / ws)
         if quota_size is not None:
-            print("Calculating workspace size", flush=True)
+            self.logger.info("Calculating workspace size")
         for ws in dirs_sorted:
             if ws in to_clean or ws in to_preserve:
                 continue
             if quota_number is not None:
                 quota_number -= 1
                 if quota_number < 0:
-                    print("Workspace number limit reached")
+                    self.logger.info("Workspace number limit reached")
                     break
             if quota_size is not None:
                 quota_size -= self.size(root / ws)
                 if quota_size < 0:
-                    print("Workspace size limit reached")
+                    self.logger.info("Workspace size limit reached")
                     break
             to_preserve.append(ws)
 
@@ -87,13 +108,21 @@ class JenkinsClean:
         for ws in to_clean:
             self.rmtree(root / ws)
 
-    @staticmethod
-    def report(ws: list, to: str) -> None:
+    def proper_size(self, size: float) -> str:
+        """Return a human readable size"""
+        units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
+        for unit in units:
+            if size < 1024:
+                return f"{size:.2f} {unit}"
+            size /= 1024
+        return f"{size:.2f} {units[-1]}"
+
+    def report(self, ws: list, to: str) -> None:
         sep = '\n  '
         if ws:
-            print(f"Workspaces to {to}:{sep}", sep.join(ws), '\n', sep='', flush=True)
+            self.logger.info("Workspaces to %s:%s%s", to, sep, sep.join(ws))
         else:
-            print(f"No workspace to {to}", flush=True)
+            self.logger.info("No workspace to %s", to)
 
     def size(self, path: Path) -> float:
         """Return the size of a directory in byte"""
@@ -105,16 +134,15 @@ class JenkinsClean:
     def rmtree(self, path: str | Path) -> None:
         if self.dry_run or not self.force:
             return
-        print("Removing", path, flush=True)
+        self.logger.info("Removing %s", str(path))
         shutil.rmtree(path, onexc=self.__onexc)
 
-    @staticmethod
-    def __onexc(func, path, excinfo):
+    def __onexc(self, func, path, excinfo):
         if not os.access(path, os.W_OK):
             os.chmod(path, stat.S_IWUSR)
             func(path)
         else:
-            print(f"warning: failed to remove {path}: {excinfo}", file=sys.stderr)
+            self.logger.warning("warning: failed to remove %s: %s", path, excinfo)
 
     def __validate_args(self) -> None:
         if not self.dry_run and not self.force:
@@ -141,6 +169,8 @@ class JenkinsClean:
             self.max_size = self.max_gb * 2**30
         elif self.max_percentage:
             self.max_size = shutil.disk_usage(self.path).total * self.max_percentage // 100
+        elif self.max_workspace is None:
+            self.logger.warning("warning: no limit specified, will not clean")
 
         if self.target_gb and self.target_percentage:
             self.target_size = min(self.target_gb * 2**30, shutil.disk_usage(self.path).total * self.target_percentage // 100)
