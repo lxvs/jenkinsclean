@@ -143,9 +143,9 @@ class JenkinsClean:
         units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
         for unit in units:
             if size < 1024:
-                return f"{size:.2f} {unit}"
+                return f"{size:.2f}".rstrip('0').rstrip('.') + f" {unit}"
             size /= 1024
-        return f"{size:.2f} {units[-1]}"
+        return f"{size:.2f}".rstrip('0').rstrip('.') + f"{ units[-1]}"
 
     def report(self, wss: list[Workspace], to: str) -> None:
         sep = '\n  '
