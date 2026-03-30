@@ -43,6 +43,7 @@ class JenkinsClean:
             dry_run: bool = False,
             force: bool = False,
             quiet: bool = False,
+            always_display_size: bool = False,
     ) -> None:
         self.path = path or Path.cwd()
         self.max_workspace = max_workspace
@@ -62,6 +63,7 @@ class JenkinsClean:
         self.logger = logging.getLogger(__name__)
         if quiet:
             self.logger.setLevel(logging.WARNING)
+        self.alwyas_display_size = always_display_size
         self.__process_path()
 
     def clean(self) -> None:
@@ -150,6 +152,8 @@ class JenkinsClean:
         for ws in wss:
             if ws.birth_time == 0:
                 ws.birth_time = Path(ws.name).stat().st_birthtime
+            if self.alwyas_display_size and ws.size == -1:
+                ws.size = self.size(self.path / ws.name)
         with_extra = [f"{ws.name}{" (" + self.proper_size(ws.size) + ")" if ws.size != -1 else ""}, created at {timeago.format(datetime.fromtimestamp(ws.birth_time), datetime.now())}" for ws in wss]
         if wss:
             self.logger.info("Workspaces to %s:%s%s", to, sep, sep.join(with_extra))

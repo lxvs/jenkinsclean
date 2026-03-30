@@ -105,6 +105,11 @@ def parse_args():
         action='store_true',
         help="Only print errors and warnings",
     )
+    parser.add_argument(
+        '--always-display-size',
+        action='store_true',
+        help="Force calculating workspace size even when not necessary.",
+    )
     return parser.parse_args()
 
 def main() -> None:
@@ -122,6 +127,7 @@ def main() -> None:
         dry_run=args.dry_run,
         force=args.force,
         quiet=args.quiet,
+        always_display_size=args.always_display_size
     )
 
     disk_usage: str | None = args.disk_usage
