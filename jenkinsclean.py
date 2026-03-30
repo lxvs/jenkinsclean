@@ -23,7 +23,7 @@ class JenkinsClean:
             force: bool = False,
             quiet: bool = False,
     ) -> None:
-        self.path = path
+        self.path = path or Path.cwd()
         self.max_workspace = max_workspace
         self.max_gb = max_gb
         self.max_percentage = max_percentage
