@@ -91,9 +91,7 @@ class JenkinsClean:
         if quota_size:
             self.logger.info("Actual size target:     %s", self.proper_size(quota_size))
         root, dirs, _ = next(self.path.walk())
-        self.logger.info("Sorting")
         dirs_sorted = sorted(dirs, key=lambda x: os.path.getmtime(root / x), reverse=True)
-        self.logger.info("Scanning")
         if self.clean_pattern:
             to_clean += [Workspace(x) for x in dirs if self.clean_pattern.search(x)]
         if self.preserve_pattern:
@@ -149,11 +147,13 @@ class JenkinsClean:
 
     def report(self, wss: list[Workspace], to: str) -> None:
         sep = '\n  '
+        if self.alwyas_display_size:
+            self.logger.info("Calculating workspace sizes")
         for ws in wss:
             if ws.birth_time == 0:
                 ws.birth_time = Path(ws.name).stat().st_birthtime
             if self.alwyas_display_size and ws.size == -1:
-                ws.size = self.size(self.path / ws.name)
+                    ws.size = self.size(self.path / ws.name)
         with_extra = [f"{ws.name}{" (" + self.proper_size(ws.size) + ")" if ws.size != -1 else ""}, created at {timeago.format(datetime.fromtimestamp(ws.birth_time), datetime.now())}" for ws in wss]
         if wss:
             self.logger.info("Workspaces to %s:%s%s", to, sep, sep.join(with_extra))
