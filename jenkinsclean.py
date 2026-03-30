@@ -5,7 +5,10 @@ import re
 import stat
 import shutil
 import logging
+import timeago
+from timeago.locales import en
 from pathlib import Path
+from datetime import datetime
 
 class JenkinsClean:
 
@@ -119,10 +122,11 @@ class JenkinsClean:
             size /= 1024
         return f"{size:.2f} {units[-1]}"
 
-    def report(self, ws: list, to: str) -> None:
+    def report(self, ws: list[str], to: str) -> None:
         sep = '\n  '
+        with_timedelta = [f"{x}, created at {timeago.format(datetime.fromtimestamp(Path(x).stat().st_birthtime), datetime.now())}" for x in ws]
         if ws:
-            self.logger.info("Workspaces to %s:%s%s", to, sep, sep.join(ws))
+            self.logger.info("Workspaces to %s:%s%s", to, sep, sep.join(with_timedelta))
         else:
             self.logger.info("No workspace to %s", to)
 
