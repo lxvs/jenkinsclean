@@ -10,6 +10,24 @@ from timeago.locales import en
 from pathlib import Path
 from datetime import datetime
 
+class Workspace:
+    _instances = {}
+
+    def __new__(cls, name):
+        if name not in cls._instances:
+            instance = super().__new__(cls)
+            cls._instances[name] = instance
+            instance._initialized = False
+        return cls._instances[name]
+
+    def __init__(self, name: str, size: int = -1, birth_time: float = 0) -> None:
+        if getattr(self, '_initialized', False):
+            return
+        self.name = name
+        self.size = size
+        self.birth_time = birth_time
+        self._initialized = True
+
 class JenkinsClean:
 
     def __init__(
@@ -75,22 +93,25 @@ class JenkinsClean:
         dirs_sorted = sorted(dirs, key=lambda x: os.path.getmtime(root / x), reverse=True)
         self.logger.info("Scanning")
         if self.clean_pattern:
-            to_clean += [x for x in dirs if self.clean_pattern.search(x)]
+            to_clean += [Workspace(x) for x in dirs if self.clean_pattern.search(x)]
         if self.preserve_pattern:
             if quota_size is not None:
                 self.logger.info("Calculating always preserved workspace size")
-            for ws in dirs:
-                if self.preserve_pattern.search(ws):
+            for d in dirs:
+                ws = Workspace(d)
+                if self.preserve_pattern.search(d):
                     to_preserve.append(ws)
                     if ws in to_clean:
                         to_clean.remove(ws)
                     if quota_number is not None:
                         quota_number -= 1
                     if quota_size is not None:
-                        quota_size -= self.size(root / ws)
+                        ws.size = self.size(root / d)
+                        quota_size -= ws.size
         if quota_size is not None:
             self.logger.info("Calculating workspace size")
-        for ws in dirs_sorted:
+        for d in dirs_sorted:
+            ws = Workspace(d)
             if ws in to_clean or ws in to_preserve:
                 continue
             if quota_number is not None:
@@ -99,19 +120,21 @@ class JenkinsClean:
                     self.logger.info("Workspace number limit reached")
                     break
             if quota_size is not None:
-                quota_size -= self.size(root / ws)
+                if ws.size == -1:
+                    ws.size = self.size(root / d)
+                quota_size -= ws.size
                 if quota_size < 0:
                     self.logger.info("Workspace size limit reached")
                     break
             to_preserve.append(ws)
 
-        to_clean = [x for x in dirs_sorted if x not in to_preserve]
+        to_clean = [Workspace(x) for x in dirs_sorted if Workspace(x) not in to_preserve]
 
         self.report(to_clean, "clean")
         self.report(to_preserve, "preserve")
 
         for ws in to_clean:
-            self.rmtree(root / ws)
+            self.rmtree(root / ws.name)
 
     def proper_size(self, size: float) -> str:
         """Return a human readable size"""
@@ -122,17 +145,20 @@ class JenkinsClean:
             size /= 1024
         return f"{size:.2f} {units[-1]}"
 
-    def report(self, ws: list[str], to: str) -> None:
+    def report(self, wss: list[Workspace], to: str) -> None:
         sep = '\n  '
-        with_timedelta = [f"{x}, created at {timeago.format(datetime.fromtimestamp(Path(x).stat().st_birthtime), datetime.now())}" for x in ws]
-        if ws:
-            self.logger.info("Workspaces to %s:%s%s", to, sep, sep.join(with_timedelta))
+        for ws in wss:
+            if ws.birth_time == 0:
+                ws.birth_time = Path(ws.name).stat().st_birthtime
+        with_extra = [f"{ws.name}{" (" + self.proper_size(ws.size) + ")" if ws.size != -1 else ""}, created at {timeago.format(datetime.fromtimestamp(ws.birth_time), datetime.now())}" for ws in wss]
+        if wss:
+            self.logger.info("Workspaces to %s:%s%s", to, sep, sep.join(with_extra))
         else:
             self.logger.info("No workspace to %s", to)
 
-    def size(self, path: Path) -> float:
+    def size(self, path: Path) -> int:
         """Return the size of a directory in byte"""
-        ret = 0.0
+        ret = 0
         for root, _, files in path.walk():
             ret += sum((root / f).stat().st_size for f in files)
         return ret
