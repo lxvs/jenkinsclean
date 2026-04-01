@@ -134,7 +134,7 @@ class JenkinsClean:
         self.report(to_preserve, "preserve")
 
         for ws in to_clean:
-            self.rmtree(root / ws.name)
+            self.rmws(ws)
 
     def proper_size(self, size: float) -> str:
         """Return a human readable size"""
@@ -167,11 +167,14 @@ class JenkinsClean:
             ret += sum((root / f).stat().st_size for f in files)
         return ret
 
-    def rmtree(self, path: str | Path) -> None:
+    def rmws(self, ws: Workspace) -> None:
         if self.dry_run or not self.force:
             return
-        self.logger.info("Removing %s", path)
-        shutil.rmtree(path, onexc=self.__onexc)
+        if ws.size == -1:
+            self.logger.info("Removing %s", ws.name)
+        else:
+            self.logger.info("Removing %s (%s)", ws.name, self.proper_size(ws.size))
+        shutil.rmtree(self.path / ws.name, onexc=self.__onexc)
 
     def __onexc(self, func, path, excinfo):
         if not os.access(path, os.W_OK):
