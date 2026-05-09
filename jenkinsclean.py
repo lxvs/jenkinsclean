@@ -208,8 +208,6 @@ class JenkinsClean:
             self.max_size = self.max_gb * 2**30
         elif self.max_percentage:
             self.max_size = shutil.disk_usage(self.path).total * self.max_percentage // 100
-        elif self.max_workspace is None:
-            self.logger.warning("warning: no limit specified, will not clean")
 
         if self.target_gb and self.target_percentage:
             self.target_size = min(self.target_gb * 2**30, shutil.disk_usage(self.path).total * self.target_percentage // 100)
