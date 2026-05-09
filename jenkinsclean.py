@@ -174,14 +174,17 @@ class JenkinsClean:
             self.logger.info("Removing %s", ws.name)
         else:
             self.logger.info("Removing %s (%s)", ws.name, self.proper_size(ws.size))
-        shutil.rmtree(self.path / ws.name, onexc=self.__onexc)
+        try:
+            shutil.rmtree(self.path / ws.name, onexc=self.__onexc)
+        except PermissionError as e:
+            self.logger.warning("warning: failed to remove %s:\n%9s%s", self.path / ws.name, '', e)
 
     def __onexc(self, func, path, excinfo):
         if not os.access(path, os.W_OK):
             os.chmod(path, stat.S_IWUSR)
             func(path)
         else:
-            self.logger.warning("warning: failed to remove %s: %s", path, excinfo)
+            raise excinfo from None
 
     def __validate_args(self) -> None:
         if not self.dry_run and not self.force:
